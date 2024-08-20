@@ -1,9 +1,13 @@
 document.getElementById('collectButton').addEventListener('click', function () {
+    const inclusionPattern = document.getElementById('inclusionPattern').value;
+    const excludedLinks = document.getElementById('excludedLinks').value.split(',').map(link => link.trim());
+
     chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         chrome.scripting.executeScript(
             {
                 target: { tabId: tabs[0].id },
-                function: collectPageContent
+                function: collectPageContent,
+                args: [inclusionPattern, excludedLinks]
             },
             (results) => {
                 if (results && results[0]) {
@@ -39,27 +43,38 @@ document.getElementById('clearButton').addEventListener('click', function () {
     });
 });
 
-document.getElementById('downloadButton').addEventListener('click', function() {
+document.getElementById('downloadButton').addEventListener('click', function () {
     chrome.runtime.sendMessage({
         action: 'getData'
     }, response => {
-        const jsonData = JSON.stringify(response.contentDictionary, null, 2); // pretty-print
-        const blob = new Blob([jsonData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        if (response && response.contentDictionary) {
+            const jsonData = JSON.stringify(response.contentDictionary, null, 2); // prettify? this doesn't seem to work...?
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
 
-        chrome.downloads.download({
-            url: url,
-            filename: 'collection.json',
-            saveAs: true
-        }, () => {
-            URL.revokeObjectURL(url);
-            console.log('Content dictionary downloaded as collection.json');
-        });
+            chrome.downloads.download({
+                url: url,
+                filename: 'collection.json',
+                saveAs: true
+            }, () => {
+                URL.revokeObjectURL(url);
+                console.log('Content dictionary downloaded as collection.json');
+            });
+        } else {
+            console.error('Failed to get content dictionary from background script');
+        }
     });
 });
 
-function collectPageContent() {
+function collectPageContent(inclusionPattern, excludedLinks) {
     const pageContent = document.body.innerHTML;
-    const links = Array.from(document.querySelectorAll('a')).map(link => link.href);
+    const links = Array.from(document.querySelectorAll('a'))
+        .map(link => link.href)
+        .filter(link => {
+            const matchesPattern = new RegExp(inclusionPattern).test(link);
+            const isExcluded = excludedLinks.includes(link);
+            const isAnchorLink = /#.*$/.test(link);
+            return matchesPattern && !isExcluded && !isAnchorLink;
+        });
     return { pageContent, links };
 }
