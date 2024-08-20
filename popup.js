@@ -100,9 +100,18 @@ function saveContentAndNavigate(tabId, url, pageContent, links, inclusionPattern
 
 async function collectPageContent(inclusionPattern, excludedLinks) {
     try {
+        await new Promise((resolve) => {
+            if (document.readyState === 'complete') {
+                resolve();
+            } else {
+                window.onload = resolve;
+            }
+        });
+
         const pageContent = document.body.innerHTML;
         const currentHost = window.location.host;
         const currentUrl = window.location.href;
+        console.log('Collecting contents of URL:', currentUrl);
         const links = Array.from(document.querySelectorAll('a'))
             .map(link => link.href)
             .filter(link => {
