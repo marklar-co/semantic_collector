@@ -3,20 +3,24 @@
     "name": "SemanticScraper",
     "version": "1.0",
     "permissions": [
-      "activeTab",
-      "scripting"
+        "activeTab",
+        "downloads",
+        "scripting"
     ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "semantic_amp_logo.png",
-        "48": "semantic_amp_logo.png",
-        "128": "semantic_amp_logo.png"
-      }
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "semantic_amp_logo.png",
+            "48": "semantic_amp_logo.png",
+            "128": "semantic_amp_logo.png"
+        }
     },
     "icons": {
         "16": "semantic_amp_logo.png",
         "48": "semantic_amp_logo.png",
         "128": "semantic_amp_logo.png"
     }
-  }
+}
