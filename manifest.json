@@ -2,7 +2,7 @@
     "manifest_version": 3,
     "name": "Semantic Collector",
     "short_name": "SemCollect",
-    "description": "Crawl and collect site content, results made available as a json download",
+    "description": "Crawl and collect web page content. Download results in JSON format.",
     "version": "0.0.1",
     "permissions": [
         "activeTab",
