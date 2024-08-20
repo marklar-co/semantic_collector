@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "SemanticScraper",
-    "short_name": "SemScrape",
-    "description": "Crawl and scrape site content, results made available as a json download",
+    "name": "Semantic Collector",
+    "short_name": "SemCollect",
+    "description": "Crawl and collect site content, results made available as a json download",
     "version": "0.0.1",
     "permissions": [
         "activeTab",
