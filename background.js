@@ -16,7 +16,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 function saveContent(data) {
     console.log('Saving content:', data);
 
-    linksList = linksList.concat(data.links);
+    linksList = Array.from(new Set(linksList.concat(data.links)));
     console.log('Updated links list:', linksList);
 
     contentDictionary[data.url] = data.content;
