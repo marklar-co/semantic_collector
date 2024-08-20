@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "SemanticScraper",
+    "version": "1.0",
+    "permissions": [
+      "activeTab",
+      "scripting"
+    ],
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "semantic_amp_logo.png",
+        "48": "semantic_amp_logo.png",
+        "128": "semantic_amp_logo.png"
+      }
+    },
+    "icons": {
+        "16": "semantic_amp_logo.png",
+        "48": "semantic_amp_logo.png",
+        "128": "semantic_amp_logo.png"
+    }
+  }
