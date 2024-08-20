@@ -1,38 +1,9 @@
+document.getElementById('crawlButton').addEventListener('click', function () {
+    startCrawl(true);
+});
+
 document.getElementById('collectButton').addEventListener('click', function () {
-    const inclusionPattern = document.getElementById('inclusionPattern').value;
-    const excludedLinks = document.getElementById('excludedLinks').value.split(',').map(link => link.trim());
-
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        chrome.scripting.executeScript(
-            {
-                target: { tabId: tabs[0].id },
-                function: collectPageContent,
-                args: [inclusionPattern, excludedLinks]
-            },
-            (results) => {
-                if (results && results[0]) {
-                    const { pageContent, links } = results[0].result;
-                    console.log("Page Content:", pageContent);
-                    console.log("Links:", links);
-
-                    chrome.runtime.sendMessage({
-                        action: 'saveContent',
-                        data: {
-                            url: tabs[0].url,
-                            content: pageContent,
-                            links: links
-                        }
-                    }, response => {
-                        console.log('Background script response:', response);
-                    });
-
-                    if (links.length > 1) {
-                        chrome.tabs.update(tabs[0].id, { url: links[1] });
-                    }
-                }
-            }
-        );
-    });
+    startCrawl(false);
 });
 
 document.getElementById('clearButton').addEventListener('click', function () {
@@ -48,7 +19,7 @@ document.getElementById('downloadButton').addEventListener('click', function () 
         action: 'getData'
     }, response => {
         if (response && response.contentDictionary) {
-            const jsonData = JSON.stringify(response.contentDictionary, null, 2); // prettify? this doesn't seem to work...?
+            const jsonData = JSON.stringify(response.contentDictionary, null, 2); // Prettify JSON with 2 spaces indentation
             const blob = new Blob([jsonData], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
 
@@ -66,15 +37,104 @@ document.getElementById('downloadButton').addEventListener('click', function () 
     });
 });
 
-function collectPageContent(inclusionPattern, excludedLinks) {
-    const pageContent = document.body.innerHTML;
-    const links = Array.from(document.querySelectorAll('a'))
-        .map(link => link.href)
-        .filter(link => {
-            const matchesPattern = new RegExp(inclusionPattern).test(link);
-            const isExcluded = excludedLinks.includes(link);
-            const isAnchorLink = /#.*$/.test(link);
-            return matchesPattern && !isExcluded && !isAnchorLink;
-        });
-    return { pageContent, links };
+function startCrawl(shouldCrawl) {
+    const inclusionPattern = document.getElementById('inclusionPattern').value;
+    const excludedLinks = document.getElementById('excludedLinks').value.split(',').map(link => link.trim());
+
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        collectAndNavigate(tabs[0].id, inclusionPattern, excludedLinks, shouldCrawl);
+    });
+}
+
+function collectAndNavigate(tabId, inclusionPattern, excludedLinks, shouldCrawl) {
+    chrome.scripting.executeScript(
+        {
+            target: { tabId: tabId },
+            function: collectPageContent,
+            args: [inclusionPattern, excludedLinks]
+        },
+        (results) => {
+            if (results && results[0]) {
+                const { url, pageContent, links } = results[0].result;
+                console.log("Url:", url);
+                console.debug("Page Content:", pageContent);
+                console.log("Links:", links);
+
+                saveContentAndNavigate(tabId, url, pageContent, links, inclusionPattern, excludedLinks, shouldCrawl);
+            }
+        }
+    );
+}
+
+function saveContentAndNavigate(tabId, url, pageContent, links, inclusionPattern, excludedLinks, shouldCrawl) {
+    chrome.runtime.sendMessage({
+        action: 'saveContent',
+        data: {
+            url: url,
+            content: pageContent,
+            links: links
+        }
+    }, response => {
+        console.log('Background script response:', response);
+
+        if (shouldCrawl) {
+            chrome.runtime.sendMessage({ action: 'getNextLink' }, response => {
+                const nextLink = response.nextLink;
+                if (nextLink) {
+                    chrome.tabs.update(tabId, { url: nextLink }, () => {
+                        // Wait for the tab to load before collecting content again
+                        chrome.tabs.onUpdated.addListener(function listener(tabIdUpdated, changeInfo) {
+                            if (tabId === tabIdUpdated && changeInfo.status === 'complete') {
+                                chrome.tabs.onUpdated.removeListener(listener);
+                                collectAndNavigate(tabId, inclusionPattern, excludedLinks, shouldCrawl);
+                            }
+                        });
+                    });
+                } else {
+                    console.log('Crawl complete');
+                }
+            });
+        }
+    });
+}
+
+async function collectPageContent(inclusionPattern, excludedLinks) {
+    try {
+        const pageContent = document.body.innerHTML;
+        const currentHost = window.location.host;
+        const currentUrl = window.location.href;
+        const links = Array.from(document.querySelectorAll('a'))
+            .map(link => link.href)
+            .filter(link => {
+                try {
+                    const url = new URL(link);
+                    const matchesPattern = new RegExp(inclusionPattern).test(link);
+                    const isExcluded = excludedLinks.includes(link);
+                    const isAnchorLink = /#.*$/.test(link);
+                    const isSameHost = url.host === currentHost;
+                    return matchesPattern && !isExcluded && !isAnchorLink && isSameHost;
+                } catch (e) {
+                    console.error('Invalid URL:', link, e);
+                    return false;
+                }
+            });
+
+        // Filter out visited links
+        const filteredLinks = [];
+        for (const link of links) {
+            const isVisited = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({ action: 'isVisitedLink', url: link }, response => {
+                    resolve(response.isVisited);
+                });
+            });
+            if (!isVisited) {
+                filteredLinks.push(link);
+            }
+        }
+
+        return { url: currentUrl, pageContent, links: filteredLinks };
+    } catch (error) {
+        console.error('Error collecting page content:', error);
+        return { url: '', pageContent: '', links: [] };
+    }
 }
