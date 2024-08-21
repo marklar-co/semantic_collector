@@ -86,7 +86,8 @@ function saveContentAndNavigate(tabId, url, pageContent, links, inclusionPattern
                         chrome.tabs.onUpdated.addListener(function listener(tabIdUpdated, changeInfo) {
                             if (tabId === tabIdUpdated && changeInfo.status === 'complete') {
                                 chrome.tabs.onUpdated.removeListener(listener);
-                                collectAndNavigate(tabId, inclusionPattern, excludedLinks, shouldCrawl);
+                                const loadDelay = document.getElementById('loadDelay').value;
+                                handleLoadDelay(tabId, inclusionPattern, excludedLinks, shouldCrawl, loadDelay);
                             }
                         });
                     });
@@ -98,6 +99,13 @@ function saveContentAndNavigate(tabId, url, pageContent, links, inclusionPattern
     });
 }
 
+async function handleLoadDelay(tabId, inclusionPattern, excludedLinks, shouldCrawl, loadDelay) {
+    const delay_s = loadDelay * 1000;
+    await new Promise(resolve => setTimeout(resolve, delay_s));
+    console.log(`${loadDelay} sec delay complete`);
+    collectAndNavigate(tabId, inclusionPattern, excludedLinks, shouldCrawl);
+}
+
 async function collectPageContent(inclusionPattern, excludedLinks) {
     try {
         await new Promise((resolve) => {
@@ -107,6 +115,7 @@ async function collectPageContent(inclusionPattern, excludedLinks) {
                 window.onload = resolve;
             }
         });
+
 
         const pageContent = document.body.innerHTML;
         const currentHost = window.location.host;
