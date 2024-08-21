@@ -19,6 +19,9 @@ Clone this repo, then load unpacked, then:
 
 Clear Data, click Collect & Crawl, then sit back and watch. When things stop, click Download to save results.
 
+**You must leave the popup in focus while crawl collection is happening.** You cannot use your browser while this operation
+is running.
+
 The collector is hardcoded to avoid links that cross over to new hostnames, *however*, in the case of redirects
 we may end up on a new host. Therefore, it is *strongly recommended* to use the Link Inclusion Pattern regex,
 e.g. `https://chamomile\.ai/.*`.
